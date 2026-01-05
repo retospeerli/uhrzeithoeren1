@@ -150,6 +150,27 @@
   // ========= Einstellungen =========
   const TOTAL_QUESTIONS = 20;
 
+  // ========= Audio (Ordner: ./audio/) =========
+  // Hinweis: Browser blockieren Audio oft, bis der User einmal geklickt hat.
+  // Das ist hier gegeben (Start-Button / Option-Click).
+  const sfx = {
+    correct: new Audio("audio/correct.wav"),
+    error: new Audio("audio/error.wav"),
+    gamewon: new Audio("audio/gamewon.wav"),
+  };
+
+  function playSfx(name){
+    const a = sfx[name];
+    if (!a) return;
+    try{
+      a.currentTime = 0;
+      const p = a.play();
+      if (p && typeof p.catch === "function") p.catch(()=>{});
+    }catch(e){
+      console.warn("Audio Fehler:", e);
+    }
+  }
+
   // ========= DOM =========
   const startScreen  = document.getElementById("start-screen");
   const quizScreen   = document.getElementById("quiz-screen");
@@ -279,12 +300,8 @@
 
     do {
       h = randInt(1, 12);
-
-      if (selectedLevel === "easy") {
-        m = pick([0, 30]);              // volle & halbe
-      } else {
-        m = pick([0, 15, 30, 45]);      // + Viertel
-      }
+      if (selectedLevel === "easy") m = pick([0, 30]);
+      else m = pick([0, 15, 30, 45]);
     } while (h === 12 && m === 0);
 
     return {h, m};
@@ -363,7 +380,6 @@
   function buildOptions(correctTime){
     const opts = [{...correctTime, swapped:false, correct:true}];
 
-    // 2 weitere falsche Zeiten (aus dem gleichen Level)
     while(opts.length < 3){
       const t = randomTime();
       if (sameTime(t, correctTime)) continue;
@@ -433,11 +449,13 @@
       statCorrect.textContent = String(correct);
       feedbackEl.textContent = "Richtig! 👍";
       feedbackEl.className = "feedback ok";
+      playSfx("correct");
     }else{
       wrong++;
       statWrong.textContent = String(wrong);
       feedbackEl.textContent = "Leider falsch.";
       feedbackEl.className = "feedback err";
+      playSfx("error");
     }
 
     qIndex++;
@@ -445,6 +463,9 @@
   }
 
   function start(){
+    // Audio vorladen/entsperren (best effort)
+    Object.values(sfx).forEach(a => { try{ a.load(); }catch(e){} });
+
     qIndex = 0;
     correct = 0;
     wrong = 0;
@@ -461,6 +482,9 @@
   function endQuiz(){
     quizScreen.classList.add("hidden");
     resultScreen.classList.remove("hidden");
+
+    // nach 20 Aufgaben: gamewon.wav
+    playSfx("gamewon");
 
     const pct = Math.round((correct / TOTAL_QUESTIONS) * 100);
     resultTitle.textContent = "Fertig! 🎉";
