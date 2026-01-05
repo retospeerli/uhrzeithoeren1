@@ -177,8 +177,8 @@
   let correct = 0;
   let wrong = 0;
 
-  let current = null;      // {h, m, phrase}
-  let optionSet = null;    // [{h,m, swapped:boolean, correct:boolean}, ...]
+  let current = null;   // {h, m, phrase}
+  let optionSet = null; // [{h,m, swapped:boolean, correct:boolean}, ...]
 
   let selectedVoice = null;
   let selectedLevel = "easy"; // 'easy' | 'hard'
@@ -239,9 +239,7 @@
     }
   }
 
-  // ========= Zeit -> Text (1. Klasse, einfach) =========
-  // Einfach: "Punkt X Uhr" und "Halb (nächste Stunde)"
-  // Schwierig: zusätzlich "Viertel nach X" und "Viertel vor (nächste Stunde)"
+  // ========= Zeit -> Text =========
   function hourNominative(h){
     const map = {1:"ein",2:"zwei",3:"drei",4:"vier",5:"fünf",6:"sechs",7:"sieben",8:"acht",9:"neun",10:"zehn",11:"elf",12:"zwölf"};
     return map[h] || String(h);
@@ -269,25 +267,27 @@
     } else if (m === 45) {
       p = `viertel vor ${nextAB}`;
     } else {
-      // sollte in dieser App nicht vorkommen
       p = `punkt ${hwPoint} uhr`;
     }
     return cap(p);
   }
 
   // ========= Aufgaben-Generator =========
+  // NUR diese Anpassung: 12:00 (-> "Punkt zwölf Uhr") darf NICHT vorkommen.
   function randomTime(){
-    const h = randInt(1, 12);
+    let h, m;
 
-    if (selectedLevel === "easy") {
-      // nur volle und halbe Stunden
-      const minutes = [0, 30];
-      return {h, m: pick(minutes)};
-    } else {
-      // zusätzlich Viertelstunden
-      const minutes = [0, 15, 30, 45];
-      return {h, m: pick(minutes)};
-    }
+    do {
+      h = randInt(1, 12);
+
+      if (selectedLevel === "easy") {
+        m = pick([0, 30]);              // volle & halbe
+      } else {
+        m = pick([0, 15, 30, 45]);      // + Viertel
+      }
+    } while (h === 12 && m === 0);
+
+    return {h, m};
   }
 
   // ========= Zeichnen: Analoge Uhr =========
@@ -332,7 +332,7 @@
     const hAng = swapped ? minuteAngle : hourAngle;
     const mAng = swapped ? hourAngle : minuteAngle;
 
-    // Minutenzeiger (blau) – dicker
+    // Minutenzeiger (blau)
     ctx.beginPath();
     ctx.moveTo(0,0);
     ctx.lineTo((r-18)*Math.cos(mAng), (r-18)*Math.sin(mAng));
@@ -341,7 +341,7 @@
     ctx.strokeStyle = "#2563eb";
     ctx.stroke();
 
-    // Stundenzeiger (rot) – dicker
+    // Stundenzeiger (rot)
     ctx.beginPath();
     ctx.moveTo(0,0);
     ctx.lineTo((r-42)*Math.cos(hAng), (r-42)*Math.sin(hAng));
@@ -363,7 +363,7 @@
   function buildOptions(correctTime){
     const opts = [{...correctTime, swapped:false, correct:true}];
 
-    // 2 weitere falsche Zeiten (aus dem gleichen Level), damit es konsistent bleibt
+    // 2 weitere falsche Zeiten (aus dem gleichen Level)
     while(opts.length < 3){
       const t = randomTime();
       if (sameTime(t, correctTime)) continue;
